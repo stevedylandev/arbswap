@@ -47,20 +47,20 @@ export function TokenSwap() {
 				parseFloat(amount) * Math.pow(10, fromToken.decimals)
 			).toString();
 
-			const result = await sdk.actions.swapToken({
+			await sdk.actions.swapToken({
 				sellToken,
 				buyToken,
 				sellAmount,
 			});
 
-			if (!result.success) {
-				setError(`Swap failed: ${result.error?.message || result.reason}`);
-			} else {
-				setSuccessMessage(
-					`Swap successful! Transaction(s): ${result.swap.transactions.join(", ")}`,
-				);
-				console.log("Swap successful:", result.swap.transactions);
-			}
+			// if (!result.success) {
+			// 	setError(`Swap failed: ${result.error?.message || result.reason}`);
+			// } else {
+			// 	setSuccessMessage(
+			// 		`Swap successful! Transaction(s): ${result.swap.transactions.join(", ")}`,
+			// 	);
+			// 	console.log("Swap successful:", result.swap.transactions);
+			// }
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to swap tokens");
 		} finally {
