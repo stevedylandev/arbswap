@@ -1,34 +1,139 @@
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownUp } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import { type Token, useTokensQuery } from "../services/tokenService";
+import { type Token, useSearchTokensQuery, usePopularTokensQuery } from "../services/tokenService";
 import { sdk } from "@farcaster/miniapp-sdk";
+import { useDebounce } from "use-debounce";
+
+// Memoized component to prevent unnecessary re-renders
+const TokenList = memo(({ 
+	tokens, 
+	selectedTokenAddress, 
+	onSelectToken 
+}: { 
+	tokens: Token[], 
+	selectedTokenAddress?: string,
+	onSelectToken: (token: Token) => void 
+}) => {
+	return (
+		<div className="divide-y">
+			{tokens.map((token) => (
+				<div
+					key={token.address}
+					className={`p-3 flex items-center gap-3 cursor-pointer hover:bg-muted transition-colors ${
+						selectedTokenAddress === token.address
+							? "bg-muted"
+							: ""
+					}`}
+					onClick={() => onSelectToken(token)}
+				>
+					{token.icon_url ? (
+						<img
+							src={token.icon_url}
+							alt={token.symbol}
+							className="w-8 h-8 rounded-full"
+						/>
+					) : (
+						<div className="w-8 h-8 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+							<span className="text-xs font-medium">
+								{token.symbol.substring(0, 2)}
+							</span>
+						</div>
+					)}
+					<div className="flex-1 min-w-0">
+						<div className="font-medium truncate">{token.name}</div>
+						<div className="text-sm text-muted-foreground">
+							{token.symbol}
+						</div>
+					</div>
+					{token.price && (
+						<div className="text-right">
+							<div className="font-medium">
+								${token.price.value.toFixed(2)}
+							</div>
+						</div>
+					)}
+				</div>
+			))}
+		</div>
+	);
+});
+
+// Container component that handles token fetching and state
+const TokenListContainer = memo(({
+	searchQuery,
+	selectedTokenAddress,
+	onSelectToken
+}: {
+	searchQuery: string,
+	selectedTokenAddress?: string,
+	onSelectToken: (token: Token) => void
+}) => {
+	// Use debounced search query for the API call
+	const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
+	
+	// Fetch popular tokens to show when no search query is entered
+	const popularTokensQuery = usePopularTokensQuery();
+	const { data: popularTokens, isLoading: isPopularLoading, isError: isPopularError } = useQuery(popularTokensQuery);
+	
+	// Search tokens based on query
+	const searchTokensQuery = useSearchTokensQuery(debouncedSearchQuery);
+	const { data: searchResults, isLoading: isSearchLoading, isError: isSearchError } = useQuery(searchTokensQuery);
+	
+	// Determine which tokens to display
+	const displayTokens = debouncedSearchQuery ? searchResults : popularTokens;
+	const isLoading = debouncedSearchQuery ? isSearchLoading : isPopularLoading;
+	const isError = debouncedSearchQuery ? isSearchError : isPopularError;
+
+	if (isLoading) {
+		return <div className="p-4 text-center">Loading tokens...</div>;
+	}
+
+	if (isError) {
+		return <div className="p-4 text-center text-red-500">Error loading tokens. Please try again.</div>;
+	}
+
+	if (displayTokens?.length === 0) {
+		return (
+			<div className="p-4 text-center text-muted-foreground">
+				{debouncedSearchQuery 
+					? "No tokens found. Try a different search term." 
+					: "No popular tokens available."}
+			</div>
+		);
+	}
+
+	return (
+		<TokenList 
+			tokens={displayTokens || []} 
+			selectedTokenAddress={selectedTokenAddress}
+			onSelectToken={onSelectToken}
+		/>
+	);
+});
 
 export function TokenSwap() {
-	const [amount, setAmount] = useState("");
-	const [slippage, setSlippage] = useState("1");
-	const [fromToken, setFromToken] = useState<Token | null>(null);
-	const [toToken, setToToken] = useState<Token | null>(null);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedToken, setSelectedToken] = useState<Token | null>(null);
 	const [isSwapping, setIsSwapping] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
+	
+	// USDC on Arbitrum
+	const USDC_ADDRESS = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+	const USDC_DECIMALS = 6;
 
-	const tokensQuery = useTokensQuery();
-	const { data: tokens, isLoading, isError } = useQuery(tokensQuery);
+	// Memoize the token selection handler to prevent unnecessary re-renders
+	const handleSelectToken = useCallback((token: Token) => {
+		setSelectedToken(token);
+	}, []);
 
 	const handleSwap = async () => {
-		if (!fromToken || !toToken || !amount) {
-			setError("Please select tokens and enter an amount");
+		if (!selectedToken) {
+			setError("Please select a token");
 			return;
 		}
 
@@ -39,13 +144,11 @@ export function TokenSwap() {
 		try {
 			// Convert token addresses to CAIP-19 format
 			// Assuming Arbitrum chain ID is 42161
-			const sellToken = `eip155:42161/erc20:${fromToken.address}`;
-			const buyToken = `eip155:42161/erc20:${toToken.address}`;
+			const sellToken = `eip155:42161/erc20:${USDC_ADDRESS}`;
+			const buyToken = `eip155:42161/erc20:${selectedToken.address}`;
 
-			// Convert amount based on token decimals
-			const sellAmount = (
-				parseFloat(amount) * Math.pow(10, fromToken.decimals)
-			).toString();
+			// Default amount of USDC to swap (1 USDC)
+			const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
 
 			await sdk.actions.swapToken({
 				sellToken,
@@ -68,136 +171,55 @@ export function TokenSwap() {
 		}
 	};
 
-	const handleSwitchTokens = () => {
-		const temp = fromToken;
-		setFromToken(toToken);
-		setToToken(temp);
-	};
-
-	if (isLoading) {
-		return <div className="flex justify-center p-8">Loading tokens...</div>;
-	}
-
-	if (isError) {
-		return (
-			<div className="text-red-500 p-8">
-				Error loading tokens. Please try again later.
-			</div>
-		);
-	}
-
 	return (
 		<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
-			<h2 className="text-2xl font-bold mb-6">Swap Tokens</h2>
+			<h2 className="text-2xl font-bold mb-6">Token Search</h2>
 
-			<div className="space-y-4">
+			<div className="space-y-6">
 				<div>
-					<Label htmlFor="from-token">From</Label>
-					<div className="flex gap-2 mt-1.5">
-						<Select
-							value={fromToken?.address}
-							onValueChange={(value) => {
-								const selected =
-									tokens?.find((t) => t.address === value) || null;
-								setFromToken(selected);
-							}}
-						>
-							<SelectTrigger className="flex-1">
-								<SelectValue placeholder="Select token" />
-							</SelectTrigger>
-							<SelectContent>
-								{tokens?.map((token) => (
-									<SelectItem key={token.address} value={token.address}>
-										<div className="flex items-center gap-2">
-											{token.icon_url && (
-												<img
-													src={token.icon_url}
-													alt={token.symbol}
-													className="w-5 h-5 rounded-full"
-												/>
-											)}
-											<span>{token.symbol}</span>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-
+					<div className="flex justify-between items-center">
+						<Label htmlFor="token-search">Search for a token</Label>
+						{!searchQuery && (
+							<span className="text-xs text-muted-foreground">Showing popular tokens</span>
+						)}
+					</div>
+					<div className="relative mt-1.5">
+						<div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+							<Search className="h-4 w-4 text-muted-foreground" />
+						</div>
 						<Input
-							id="amount"
-							type="number"
-							placeholder="0.0"
-							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
-							className="flex-1"
+							id="token-search"
+							type="text"
+							placeholder="Search by name or symbol..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="pl-10"
 						/>
 					</div>
 				</div>
-				<div className="flex justify-center">
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={handleSwitchTokens}
-						disabled={!fromToken || !toToken}
-					>
-						<ArrowDownUp className="h-4 w-4" />
-					</Button>
-				</div>
-				<div>
-					<Label htmlFor="to-token">To</Label>
-					<div className="flex gap-2 mt-1.5">
-						<Select
-							value={toToken?.address}
-							onValueChange={(value) => {
-								const selected =
-									tokens?.find((t) => t.address === value) || null;
-								setToToken(selected);
-							}}
-						>
-							<SelectTrigger className="flex-1">
-								<SelectValue placeholder="Select token" />
-							</SelectTrigger>
-							<SelectContent>
-								{tokens?.map((token) => (
-									<SelectItem key={token.address} value={token.address}>
-										<div className="flex items-center gap-2">
-											{token.icon_url && (
-												<img
-													src={token.icon_url}
-													alt={token.symbol}
-													className="w-5 h-5 rounded-full"
-												/>
-											)}
-											<span>{token.symbol}</span>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+
+				<div className="border rounded-md overflow-hidden">
+					<div className="max-h-64 overflow-y-auto">
+						<TokenListContainer
+							searchQuery={searchQuery}
+							selectedTokenAddress={selectedToken?.address}
+							onSelectToken={handleSelectToken}
+						/>
 					</div>
 				</div>
-				<div>
-					<Label htmlFor="slippage">Slippage Tolerance (%)</Label>
-					<Input
-						id="slippage"
-						type="number"
-						placeholder="1.0"
-						value={slippage}
-						onChange={(e) => setSlippage(e.target.value)}
-						className="mt-1.5"
-					/>
-				</div>
+
 				{error && <div className="text-red-500 text-sm">{error}</div>}
 				{successMessage && (
 					<div className="text-green-500 text-sm">{successMessage}</div>
 				)}
+				
 				<Button
 					className="w-full"
 					onClick={handleSwap}
-					disabled={isSwapping || !fromToken || !toToken || !amount}
+					disabled={isSwapping || !selectedToken}
 				>
-					{isSwapping ? "Swapping..." : "Swap"}
-				</Button>{" "}
+					{isSwapping ? "Swapping..." : `Swap 1 USDC for ${selectedToken?.symbol || 'token'}`}
+				</Button>
 			</div>
 		</div>
 	);
