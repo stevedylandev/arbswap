@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users, ArrowRight } from "lucide-react";
+import { sdk } from "@farcaster/miniapp-sdk";
+import { useState } from "react";
 
 interface ClankerToken {
 	address: string;
@@ -23,7 +25,9 @@ interface ClankerResponse {
 }
 
 const fetchTopClankers = async (): Promise<ClankerResponse> => {
-	const response = await fetch("http://localhost:8787/tokens/6023");
+	const response = await fetch(
+		`${import.meta.env.VITE_SERVER_URL}/tokens/6023`,
+	);
 	if (!response.ok) {
 		throw new Error("Failed to fetch clankers");
 	}
@@ -35,11 +39,45 @@ interface TopClankersProps {
 }
 
 export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
+	const [isSwapping, setIsSwapping] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+
 	const { data, isLoading, isError } = useQuery({
 		queryKey: ["topClankers"],
 		queryFn: fetchTopClankers,
 		refetchInterval: 30000,
 	});
+
+	// USDC on Arbitrum
+	const USDC_ADDRESS = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+	const USDC_DECIMALS = 6;
+
+	const handleTokenClick = async (token: ClankerToken) => {
+		setError(null);
+		setIsSwapping(token.address);
+
+		try {
+			// Convert token addresses to CAIP-19 format
+			const sellToken = `eip155:42161/erc20:${USDC_ADDRESS}`;
+			const buyToken = `eip155:42161/erc20:${token.address}`;
+
+			// Default amount of USDC to swap (1 USDC)
+			const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
+
+			await sdk.actions.swapToken({
+				sellToken,
+				buyToken,
+				sellAmount,
+			});
+
+			// Call the original onTokenSelect if provided
+			onTokenSelect?.(token);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to swap tokens");
+		} finally {
+			setIsSwapping(null);
+		}
+	};
 
 	if (isLoading) {
 		return (
@@ -65,17 +103,28 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 
 	return (
 		<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
-			<h2 className="text-2xl font-bold">Top 3 Clankers on ARB</h2>
+			<h2 className="text-2xl font-bold">Top Clankers on Arbitrum</h2>
 			<p className="text-sm text-muted-foreground mb-6">
-				Click any token to swap USDC for it
+				The current top Clankers based on your mutual follows on Farcaster.
+				Click any token to swap USDC for it!
 			</p>
+
+			{error && (
+				<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+					{error}
+				</div>
+			)}
 
 			<div className="space-y-4">
 				{topThree.map((token, index) => (
 					<div
 						key={token.address}
-						className="p-4 border rounded-lg hover:bg-muted hover:border-primary/50 transition-all cursor-pointer group"
-						onClick={() => onTokenSelect?.(token)}
+						className={`p-4 border rounded-lg hover:bg-muted hover:border-primary/50 transition-all cursor-pointer group ${
+							isSwapping === token.address
+								? "opacity-50 pointer-events-none"
+								: ""
+						}`}
+						onClick={() => handleTokenClick(token)}
 						title="Click to swap for this token"
 					>
 						<div className="flex items-start gap-3">
@@ -89,7 +138,13 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 									<div className="font-semibold text-lg truncate">
 										{token.name}
 									</div>
-									<ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+									{isSwapping === token.address ? (
+										<div className="text-sm text-muted-foreground">
+											Swapping...
+										</div>
+									) : (
+										<ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+									)}
 								</div>
 								<div className="text-sm text-muted-foreground mb-2">
 									{token.description === "nan" || !token.description

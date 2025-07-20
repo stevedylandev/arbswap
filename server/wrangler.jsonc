@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "server",
+	"name": "arbswap-server",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-05-25"
 	// "compatibility_flags": [
