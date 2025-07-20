@@ -1,7 +1,6 @@
 import { useState, memo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -17,10 +16,12 @@ const TokenList = memo(
 	({
 		tokens,
 		selectedTokenAddress,
+		isSwapping,
 		onSelectToken,
 	}: {
 		tokens: Token[];
 		selectedTokenAddress?: string;
+		isSwapping: string | null;
 		onSelectToken: (token: Token) => void;
 	}) => {
 		return (
@@ -30,8 +31,11 @@ const TokenList = memo(
 						key={token.address}
 						className={`p-3 flex items-center gap-3 cursor-pointer hover:bg-muted transition-colors ${
 							selectedTokenAddress === token.address ? "bg-muted" : ""
+						} ${
+							isSwapping === token.address ? "opacity-50 pointer-events-none" : ""
 						}`}
 						onClick={() => onSelectToken(token)}
+						title="Click to swap 1 USDC for this token"
 					>
 						{token.icon_url ? (
 							<img
@@ -52,13 +56,15 @@ const TokenList = memo(
 								{token.symbol}
 							</div>
 						</div>
-						{token.price && (
+						{isSwapping === token.address ? (
+							<div className="text-sm text-muted-foreground">Swapping...</div>
+						) : token.price ? (
 							<div className="text-right">
 								<div className="font-medium">
 									${token.price.value.toFixed(2)}
 								</div>
 							</div>
-						)}
+						) : null}
 					</div>
 				))}
 			</div>
@@ -71,10 +77,12 @@ const TokenListContainer = memo(
 	({
 		searchQuery,
 		selectedTokenAddress,
+		isSwapping,
 		onSelectToken,
 	}: {
 		searchQuery: string;
 		selectedTokenAddress?: string;
+		isSwapping: string | null;
 		onSelectToken: (token: Token) => void;
 	}) => {
 		// Use debounced search query for the API call
@@ -127,6 +135,7 @@ const TokenListContainer = memo(
 			<TokenList
 				tokens={displayTokens || []}
 				selectedTokenAddress={selectedTokenAddress}
+				isSwapping={isSwapping}
 				onSelectToken={onSelectToken}
 			/>
 		);
@@ -146,9 +155,8 @@ export function TokenSwap({
 	const [selectedToken, setSelectedToken] = useState<Token | null>(
 		externalSelectedToken || null,
 	);
-	const [isSwapping, setIsSwapping] = useState(false);
+	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
 	// USDC on Arbitrum
 	const USDC_ADDRESS = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
@@ -163,64 +171,49 @@ export function TokenSwap({
 
 	// Memoize the token selection handler to prevent unnecessary re-renders
 	const handleSelectToken = useCallback(
-		(token: Token) => {
-			setSelectedToken(token);
-			onTokenSelect?.(token);
+		async (token: Token) => {
+			setError(null);
+			setIsSwapping(token.address);
+
+			try {
+				// Convert token addresses to CAIP-19 format
+				const sellToken = `eip155:42161/erc20:${USDC_ADDRESS}`;
+				const buyToken = `eip155:42161/erc20:${token.address}`;
+
+				// Default amount of USDC to swap (1 USDC)
+				const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
+
+				await sdk.actions.swapToken({
+					sellToken,
+					buyToken,
+					sellAmount,
+				});
+
+				setSelectedToken(token);
+				onTokenSelect?.(token);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Failed to swap tokens");
+			} finally {
+				setIsSwapping(null);
+			}
 		},
-		[onTokenSelect],
+		[onTokenSelect, USDC_ADDRESS, USDC_DECIMALS],
 	);
-
-	const handleSwap = async () => {
-		if (!selectedToken) {
-			setError("Please select a token");
-			return;
-		}
-
-		setError(null);
-		setSuccessMessage(null);
-		setIsSwapping(true);
-
-		try {
-			// Convert token addresses to CAIP-19 format
-			// Assuming Arbitrum chain ID is 42161
-			const sellToken = `eip155:42161/erc20:${USDC_ADDRESS}`;
-			const buyToken = `eip155:42161/erc20:${selectedToken.address}`;
-
-			// Default amount of USDC to swap (1 USDC)
-			const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
-
-			await sdk.actions.swapToken({
-				sellToken,
-				buyToken,
-				sellAmount,
-			});
-
-			// if (!result.success) {
-			// 	setError(`Swap failed: ${result.error?.message || result.reason}`);
-			// } else {
-			// 	setSuccessMessage(
-			// 		`Swap successful! Transaction(s): ${result.swap.transactions.join(", ")}`,
-			// 	);
-			// 	console.log("Swap successful:", result.swap.transactions);
-			// }
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to swap tokens");
-		} finally {
-			setIsSwapping(false);
-		}
-	};
 
 	return (
 		<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
-			<h2 className="text-2xl font-bold">Token Search</h2>
+			<h2 className="text-2xl font-bold">Token Swap</h2>
 			<p className="mb-6 text-muted-foreground">
-				Find and swap tokens on Arbitrum
+				Click any token to swap 1 USDC for it
 			</p>
 
 			<div className="space-y-6">
 				<div>
 					<div className="flex justify-between items-center">
 						<Label htmlFor="token-search">Search for a token</Label>
+						{!searchQuery && (
+							<span className="text-xs text-muted-foreground">Showing popular tokens</span>
+						)}
 					</div>
 					<div className="relative mt-1.5">
 						<div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -239,28 +232,19 @@ export function TokenSwap({
 
 				<div className="border rounded-md overflow-hidden">
 					<div className="max-h-64 overflow-y-auto">
-						<TokenListContainer
-							searchQuery={searchQuery}
-							selectedTokenAddress={selectedToken?.address}
-							onSelectToken={handleSelectToken}
-						/>
-					</div>
+					<TokenListContainer
+						searchQuery={searchQuery}
+						selectedTokenAddress={selectedToken?.address}
+						isSwapping={isSwapping}
+						onSelectToken={handleSelectToken}
+					/>					</div>
 				</div>
 
-				{error && <div className="text-red-500 text-sm">{error}</div>}
-				{successMessage && (
-					<div className="text-green-500 text-sm">{successMessage}</div>
+				{error && (
+					<div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+						{error}
+					</div>
 				)}
-
-				<Button
-					className="w-full"
-					onClick={handleSwap}
-					disabled={isSwapping || !selectedToken}
-				>
-					{isSwapping
-						? "Swapping..."
-						: `Swap 1 USDC for ${selectedToken?.symbol || "token"}`}
-				</Button>
 			</div>
 		</div>
 	);
