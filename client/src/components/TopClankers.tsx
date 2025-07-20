@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { Users, ArrowRight } from "lucide-react";
 
 interface ClankerToken {
 	address: string;
@@ -30,7 +30,11 @@ const fetchTopClankers = async (): Promise<ClankerResponse> => {
 	return response.json();
 };
 
-export function TopClankers() {
+interface TopClankersProps {
+	onTokenSelect?: (token: ClankerToken) => void;
+}
+
+export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 	const { data, isLoading, isError } = useQuery({
 		queryKey: ["topClankers"],
 		queryFn: fetchTopClankers,
@@ -61,16 +65,18 @@ export function TopClankers() {
 
 	return (
 		<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
-			<h2 className="text-2xl font-bold">Clankers on Arbitrum</h2>
-			<p className="mt-4 text-sm text-muted-foreground mb-6">
-				Tokens that your mutual followers hold
+			<h2 className="text-2xl font-bold">Top 3 Clankers on ARB</h2>
+			<p className="text-sm text-muted-foreground mb-6">
+				Click any token to swap USDC for it
 			</p>
 
 			<div className="space-y-4">
 				{topThree.map((token, index) => (
 					<div
 						key={token.address}
-						className="p-4 border rounded-lg hover:bg-muted transition-colors"
+						className="p-4 border rounded-lg hover:bg-muted hover:border-primary/50 transition-all cursor-pointer group"
+						onClick={() => onTokenSelect?.(token)}
+						title="Click to swap for this token"
 					>
 						<div className="flex items-start gap-3">
 							<div className="flex-shrink-0">
@@ -79,8 +85,11 @@ export function TopClankers() {
 								</div>
 							</div>
 							<div className="flex-1 min-w-0">
-								<div className="font-semibold text-lg truncate">
-									{token.name}
+								<div className="flex items-center justify-between">
+									<div className="font-semibold text-lg truncate">
+										{token.name}
+									</div>
+									<ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
 								</div>
 								<div className="text-sm text-muted-foreground mb-2">
 									{token.description === "nan" || !token.description
@@ -88,6 +97,12 @@ export function TopClankers() {
 										: token.description.length > 100
 											? token.description.substring(0, 100) + "..."
 											: token.description}
+								</div>
+								<div className="flex items-center gap-2 text-sm mb-2">
+									<Users className="h-4 w-4" />
+									<span className="font-medium">
+										{token.count_holders} holders
+									</span>
 								</div>
 								{token.holders.length > 0 && (
 									<div className="flex -space-x-2 mt-2">

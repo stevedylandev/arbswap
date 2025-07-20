@@ -1,4 +1,4 @@
-import { useState, memo, useCallback } from "react";
+import { useState, memo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Button } from "./ui/button";
@@ -115,9 +115,14 @@ const TokenListContainer = memo(({
 	);
 });
 
-export function TokenSwap() {
+interface TokenSwapProps {
+	externalSelectedToken?: Token | null;
+	onTokenSelect?: (token: Token | null) => void;
+}
+
+export function TokenSwap({ externalSelectedToken, onTokenSelect }: TokenSwapProps = {}) {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedToken, setSelectedToken] = useState<Token | null>(null);
+	const [selectedToken, setSelectedToken] = useState<Token | null>(externalSelectedToken || null);
 	const [isSwapping, setIsSwapping] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -126,10 +131,18 @@ export function TokenSwap() {
 	const USDC_ADDRESS = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 	const USDC_DECIMALS = 6;
 
+	// Handle external token selection
+	useEffect(() => {
+		if (externalSelectedToken) {
+			setSelectedToken(externalSelectedToken);
+		}
+	}, [externalSelectedToken]);
+
 	// Memoize the token selection handler to prevent unnecessary re-renders
 	const handleSelectToken = useCallback((token: Token) => {
 		setSelectedToken(token);
-	}, []);
+		onTokenSelect?.(token);
+	}, [onTokenSelect]);
 
 	const handleSwap = async () => {
 		if (!selectedToken) {
