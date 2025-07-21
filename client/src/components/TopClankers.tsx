@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Users, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useState } from "react";
 
