@@ -4,6 +4,7 @@ import { TokenSwap } from "./components/TokenSwap";
 import { TopClankers } from "./components/TopClankers";
 import type { Token } from "./services/tokenService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "./components/ui/button";
 
 function App() {
 	const { isConnected } = useAccount();
@@ -58,12 +59,12 @@ function App() {
 				</div>
 			)}
 			{!isConnected && (
-				<button
+				<Button
 					type="button"
 					onClick={() => connect({ connector: connectors[0] })}
 				>
 					Connect
-				</button>
+				</Button>
 			)}
 		</div>
 	);
