@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useState } from "react";
+import { LoaderCircleIcon } from "lucide-react";
 
 interface ClankerToken {
 	address: string;
@@ -81,11 +82,9 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 
 	if (isLoading) {
 		return (
-			<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
+			<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm flex flex-col items-center justify-center">
 				<h2 className="text-2xl font-bold mb-6">Clankers on Arbitrum</h2>
-				<div className="text-center text-muted-foreground">
-					Loading clankers...
-				</div>
+				<LoaderCircleIcon className="w-8 h-8 animate-spin" />
 			</div>
 		);
 	}
