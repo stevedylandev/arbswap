@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useState } from "react";
-import { LoaderCircleIcon } from "lucide-react";
+import { Skeleton } from "./ui/skeleton";
 
 interface ClankerToken {
 	address: string;
@@ -82,9 +82,37 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 
 	if (isLoading) {
 		return (
-			<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm flex flex-col items-center justify-center">
-				<h2 className="text-2xl font-bold mb-6">Clankers on Arbitrum</h2>
-				<LoaderCircleIcon className="w-8 h-8 animate-spin" />
+			<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
+				<h2 className="text-2xl font-bold">Top Clankers on Arbitrum</h2>
+				<p className="text-sm text-muted-foreground mb-6">
+					The current top Clankers based on your mutual follows on Farcaster.
+					Click any token to swap for it!
+				</p>
+
+				<div className="space-y-4">
+					{[1, 2, 3].map((index) => (
+						<div key={index} className="p-4 border rounded-lg">
+							<div className="flex items-start gap-3">
+								<div className="flex-shrink-0">
+									<Skeleton className="w-10 h-10 rounded-full" />
+								</div>
+								<div className="flex-1 min-w-0">
+									<div className="flex items-center justify-between">
+										<Skeleton className="h-6 w-32" />
+										<Skeleton className="h-4 w-4" />
+									</div>
+									<Skeleton className="h-4 w-full mt-2" />
+									<Skeleton className="h-4 w-3/4 mt-1" />
+									<div className="flex -space-x-2 mt-2">
+										{[1, 2, 3, 4, 5].map((i) => (
+											<Skeleton key={i} className="w-6 h-6 rounded-full" />
+										))}
+									</div>
+								</div>
+							</div>
+						</div>
+					))}
+				</div>
 			</div>
 		);
 	}
