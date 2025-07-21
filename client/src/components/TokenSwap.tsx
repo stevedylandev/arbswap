@@ -7,6 +7,7 @@ import { type Token, useSearchTokensQuery } from "../services/tokenService";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useDebounce } from "use-debounce";
 import { DEFAULT_TOKENS } from "@/lib/constants";
+import { toast } from "sonner";
 
 const TokenList = memo(
 	({
@@ -181,16 +182,25 @@ export function TokenSwap({
 				// Default amount of USDC to swap (1 USDC)
 				const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
 
-				await sdk.actions.swapToken({
+				const result = await sdk.actions.swapToken({
 					sellToken,
 					buyToken,
 					sellAmount,
 				});
 
-				setSelectedToken(token);
-				onTokenSelect?.(token);
+				if (result.success) {
+					toast(`Successfully swapped 1 USDC for ${token.symbol}!`);
+					setSelectedToken(token);
+					onTokenSelect?.(token);
+				} else {
+					const errorMessage = result.error?.message || `Swap failed: ${result.reason}`;
+					toast(`Swap failed: ${errorMessage}`);
+					setError(errorMessage);
+				}
 			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to swap tokens");
+				const errorMessage = err instanceof Error ? err.message : "Failed to swap tokens";
+				toast(`Swap failed: ${errorMessage}`);
+				setError(errorMessage);
 			} finally {
 				setIsSwapping(null);
 			}

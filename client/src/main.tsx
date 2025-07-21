@@ -6,6 +6,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import "./index.css";
 import App from "./App.tsx";
 import { WagmiProvider } from "wagmi";
+import { Toaster } from "@/components/ui/sonner";
 import { config } from "./lib/config.ts";
 
 // Create a client
@@ -35,6 +36,7 @@ createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<WagmiProvider config={config}>
 			<QueryClientProvider client={queryClient}>
+				<Toaster />
 				<AppWithSDK />
 				<ReactQueryDevtools initialIsOpen={false} />
 			</QueryClientProvider>
