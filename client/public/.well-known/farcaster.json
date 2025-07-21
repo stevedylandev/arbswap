@@ -1,13 +1,17 @@
 {
-  "accountAssociation": {
-    "header": "",
-    "payload": "",
-    "signature": ""
-  },
-  "frame": {
-    "version": "1",
-    "name": "ArbSwap",
-    "iconUrl": "https://example.com/icon.png",
-    "homeUrl": "https://example.com"
-  }
+	"accountAssociation": {
+		"header": "eyJmaWQiOjYwMjMsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg0NTYxMzExNjFmODNDN0Q3ZkRBMTViMzJhNWY3QzIxRkQ0RTI3RTk2In0",
+		"payload": "eyJkb21haW4iOiJhcmJzd2FwLnRyYWRpbmcifQ",
+		"signature": "MHg0ODQ4MjljYWZiNmY5YjU0ZjUyMjUzOTRjNmJiYTFiNDc3Y2JlYjI0MjQ2OThkZTNlNjY2YTZmNWFjN2E0ZWY5NzA0ZTA5OTE0MDA2Njg4YWI3ZjI1NDNhOTA2MTQwM2NlNDE2MWIzOGE4OWIwMGNkNWM5OTkzZjE3MGJhOTkwMjFi"
+	},
+	"frame": {
+		"version": "1",
+		"name": "ArbSwap",
+		"iconUrl": "https://arbswap.trading/icon.png",
+		"homeUrl": "https://arbswap.trading",
+		"imageUrl": "https://arbswap.trading/image.png",
+		"buttonTitle": "Swap",
+		"splashImageUrl": "https://arbswap.trading/splash.png",
+		"splashBackgroundColor": "#213147"
+	}
 }
