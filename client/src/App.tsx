@@ -3,6 +3,7 @@ import { useAccount, useConnect } from "wagmi";
 import { TokenSwap } from "./components/TokenSwap";
 import { TopClankers } from "./components/TopClankers";
 import type { Token } from "./services/tokenService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function App() {
 	const { isConnected } = useAccount();
@@ -39,11 +40,21 @@ function App() {
 			</p>
 			{isConnected && (
 				<div className="w-full flex flex-col lg:flex-row gap-6 items-start justify-center">
-					<TopClankers onTokenSelect={handleClankerSelect} />
-					<TokenSwap
-						externalSelectedToken={selectedToken}
-						onTokenSelect={setSelectedToken}
-					/>
+					<Tabs defaultValue="search">
+						<TabsList className="w-full">
+							<TabsTrigger value="search">Search</TabsTrigger>
+							<TabsTrigger value="clankers">Clankers</TabsTrigger>
+						</TabsList>
+						<TabsContent value="search">
+							<TokenSwap
+								externalSelectedToken={selectedToken}
+								onTokenSelect={setSelectedToken}
+							/>
+						</TabsContent>
+						<TabsContent value="clankers">
+							<TopClankers onTokenSelect={handleClankerSelect} />
+						</TabsContent>
+					</Tabs>
 				</div>
 			)}
 			{!isConnected && (

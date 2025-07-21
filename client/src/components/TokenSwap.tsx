@@ -32,7 +32,9 @@ const TokenList = memo(
 						className={`p-3 flex items-center gap-3 cursor-pointer hover:bg-muted transition-colors ${
 							selectedTokenAddress === token.address ? "bg-muted" : ""
 						} ${
-							isSwapping === token.address ? "opacity-50 pointer-events-none" : ""
+							isSwapping === token.address
+								? "opacity-50 pointer-events-none"
+								: ""
 						}`}
 						onClick={() => onSelectToken(token)}
 						title="Click to swap 1 USDC for this token"
@@ -204,7 +206,7 @@ export function TokenSwap({
 		<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
 			<h2 className="text-2xl font-bold">Token Swap</h2>
 			<p className="mb-6 text-muted-foreground">
-				Click any token to swap 1 USDC for it
+				Click any token to swap for it
 			</p>
 
 			<div className="space-y-6">
@@ -212,7 +214,9 @@ export function TokenSwap({
 					<div className="flex justify-between items-center">
 						<Label htmlFor="token-search">Search for a token</Label>
 						{!searchQuery && (
-							<span className="text-xs text-muted-foreground">Showing popular tokens</span>
+							<span className="text-xs text-muted-foreground">
+								Showing popular tokens
+							</span>
 						)}
 					</div>
 					<div className="relative mt-1.5">
@@ -232,12 +236,13 @@ export function TokenSwap({
 
 				<div className="border rounded-md overflow-hidden">
 					<div className="max-h-64 overflow-y-auto">
-					<TokenListContainer
-						searchQuery={searchQuery}
-						selectedTokenAddress={selectedToken?.address}
-						isSwapping={isSwapping}
-						onSelectToken={handleSelectToken}
-					/>					</div>
+						<TokenListContainer
+							searchQuery={searchQuery}
+							selectedTokenAddress={selectedToken?.address}
+							isSwapping={isSwapping}
+							onSelectToken={handleSelectToken}
+						/>{" "}
+					</div>
 				</div>
 
 				{error && (

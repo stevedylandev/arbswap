@@ -106,7 +106,7 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 			<h2 className="text-2xl font-bold">Top Clankers on Arbitrum</h2>
 			<p className="text-sm text-muted-foreground mb-6">
 				The current top Clankers based on your mutual follows on Farcaster.
-				Click any token to swap USDC for it!
+				Click any token to swap for it!
 			</p>
 
 			{error && (
@@ -152,12 +152,6 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 										: token.description.length > 100
 											? token.description.substring(0, 100) + "..."
 											: token.description}
-								</div>
-								<div className="flex items-center gap-2 text-sm mb-2">
-									<Users className="h-4 w-4" />
-									<span className="font-medium">
-										{token.count_holders} holders
-									</span>
 								</div>
 								{token.holders.length > 0 && (
 									<div className="flex -space-x-2 mt-2">
