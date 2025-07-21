@@ -6,6 +6,7 @@ import type { Token } from "./services/tokenService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "./components/ui/button";
 import arbLogo from "./assets/arb-logo.svg";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 function App() {
 	const { isConnected } = useAccount();
@@ -45,7 +46,10 @@ function App() {
 				<p className="text-center text-white text-xs flex items-center">
 					Powered by
 				</p>
-				<p className="text-center text-white text-lg flex items-center">
+				<p
+					onClick={() => sdk.actions.openUrl("https://quotient.social")}
+					className="text-center text-white text-lg flex items-center cursor-pointer"
+				>
 					{" "}
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
