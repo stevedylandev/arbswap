@@ -1,17 +1,20 @@
 import { useState } from "react";
-import { useAccount, useConnect } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 import { TokenSwap } from "./components/TokenSwap";
 import { TopClankers } from "./components/TopClankers";
+import { WalletConnectionDialog } from "./components/WalletConnectionDialog";
 import type { Token } from "./services/tokenService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "./components/ui/button";
 import arbLogo from "./assets/arb-logo.svg";
 import { sdk } from "@farcaster/miniapp-sdk";
+import { Button } from "./components/ui/button";
 
 function App() {
 	const { isConnected } = useAccount();
-	const { connect, connectors } = useConnect();
 	const [selectedToken, setSelectedToken] = useState<Token | null>(null);
+	const [showWalletDialog, setShowWalletDialog] = useState(false);
+
+	const { disconnect } = useDisconnect();
 
 	const handleClankerSelect = (clankerToken: {
 		address: string;
@@ -67,31 +70,33 @@ function App() {
 					Quotient
 				</p>
 			</div>
-			{isConnected && (
-				<Tabs defaultValue="search" className="w-full">
-					<TabsList className="w-full">
-						<TabsTrigger value="search">Search</TabsTrigger>
-						<TabsTrigger value="clankers">Clankers</TabsTrigger>
-					</TabsList>
-					<TabsContent value="search">
-						<TokenSwap
-							externalSelectedToken={selectedToken}
-							onTokenSelect={setSelectedToken}
-						/>
-					</TabsContent>
-					<TabsContent value="clankers">
-						<TopClankers onTokenSelect={handleClankerSelect} />
-					</TabsContent>
-				</Tabs>
-			)}
-			{!isConnected && (
-				<Button
-					type="button"
-					onClick={() => connect({ connector: connectors[0] })}
-				>
-					Connect
-				</Button>
-			)}
+			<Tabs defaultValue="search" className="w-full">
+				<TabsList className="w-full">
+					<TabsTrigger value="search">Search</TabsTrigger>
+					<TabsTrigger value="clankers">Clankers</TabsTrigger>
+				</TabsList>
+				<TabsContent value="search">
+					<TokenSwap
+						externalSelectedToken={selectedToken}
+						onTokenSelect={setSelectedToken}
+						isConnected={isConnected}
+						onConnectionRequired={() => setShowWalletDialog(true)}
+					/>
+				</TabsContent>
+				<TabsContent value="clankers">
+					<TopClankers
+						onTokenSelect={handleClankerSelect}
+						isConnected={isConnected}
+						onConnectionRequired={() => setShowWalletDialog(true)}
+					/>
+				</TabsContent>
+			</Tabs>
+			<Button onClick={() => disconnect()}>disconnect</Button>
+
+			<WalletConnectionDialog
+				open={showWalletDialog}
+				onOpenChange={setShowWalletDialog}
+			/>
 		</div>
 	);
 }

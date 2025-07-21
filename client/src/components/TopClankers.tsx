@@ -37,9 +37,15 @@ const fetchTopClankers = async (): Promise<ClankerResponse> => {
 
 interface TopClankersProps {
 	onTokenSelect?: (token: ClankerToken) => void;
+	isConnected?: boolean;
+	onConnectionRequired?: () => void;
 }
 
-export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
+export function TopClankers({ 
+	onTokenSelect, 
+	isConnected = true, 
+	onConnectionRequired 
+}: TopClankersProps = {}) {
 	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +60,12 @@ export function TopClankers({ onTokenSelect }: TopClankersProps = {}) {
 	const USDC_DECIMALS = 6;
 
 	const handleTokenClick = async (token: ClankerToken) => {
+		// Check if wallet is connected before attempting swap
+		if (!isConnected) {
+			onConnectionRequired?.();
+			return;
+		}
+
 		setError(null);
 		setIsSwapping(token.address);
 

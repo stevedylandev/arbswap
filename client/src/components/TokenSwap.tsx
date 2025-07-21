@@ -133,11 +133,15 @@ const TokenListContainer = memo(
 interface TokenSwapProps {
 	externalSelectedToken?: Token | null;
 	onTokenSelect?: (token: Token | null) => void;
+	isConnected?: boolean;
+	onConnectionRequired?: () => void;
 }
 
 export function TokenSwap({
 	externalSelectedToken,
 	onTokenSelect,
+	isConnected = true,
+	onConnectionRequired,
 }: TokenSwapProps = {}) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedToken, setSelectedToken] = useState<Token | null>(
@@ -160,6 +164,12 @@ export function TokenSwap({
 	// Memoize the token selection handler to prevent unnecessary re-renders
 	const handleSelectToken = useCallback(
 		async (token: Token) => {
+			// Check if wallet is connected before attempting swap
+			if (!isConnected) {
+				onConnectionRequired?.();
+				return;
+			}
+
 			setError(null);
 			setIsSwapping(token.address);
 
@@ -185,7 +195,7 @@ export function TokenSwap({
 				setIsSwapping(null);
 			}
 		},
-		[onTokenSelect, USDC_ADDRESS, USDC_DECIMALS],
+		[isConnected, onConnectionRequired, onTokenSelect, USDC_ADDRESS, USDC_DECIMALS],
 	);
 
 	return (
