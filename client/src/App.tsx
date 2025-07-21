@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount } from "wagmi";
 import { TokenSwap } from "./components/TokenSwap";
 import { TopClankers } from "./components/TopClankers";
 import { WalletConnectionDialog } from "./components/WalletConnectionDialog";
@@ -7,14 +7,11 @@ import type { Token } from "./services/tokenService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import arbLogo from "./assets/arb-logo.svg";
 import { sdk } from "@farcaster/miniapp-sdk";
-import { Button } from "./components/ui/button";
 
 function App() {
 	const { isConnected } = useAccount();
 	const [selectedToken, setSelectedToken] = useState<Token | null>(null);
 	const [showWalletDialog, setShowWalletDialog] = useState(false);
-
-	const { disconnect } = useDisconnect();
 
 	const handleClankerSelect = (clankerToken: {
 		address: string;
@@ -71,7 +68,7 @@ function App() {
 				</p>
 			</div>
 			<Tabs defaultValue="search" className="w-full">
-				<TabsList className="w-full">
+				<TabsList className="w-full max-w-md mx-auto">
 					<TabsTrigger value="search">Search</TabsTrigger>
 					<TabsTrigger value="clankers">Clankers</TabsTrigger>
 				</TabsList>
@@ -91,8 +88,6 @@ function App() {
 					/>
 				</TabsContent>
 			</Tabs>
-			<Button onClick={() => disconnect()}>disconnect</Button>
-
 			<WalletConnectionDialog
 				open={showWalletDialog}
 				onOpenChange={setShowWalletDialog}
