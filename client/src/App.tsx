@@ -34,29 +34,27 @@ function App() {
 	};
 
 	return (
-		<div className="max-w-4xl mx-auto flex flex-col gap-6 items-center justify-center min-h-screen p-4">
+		<div className="max-w-4xl w-full mx-auto flex flex-col gap-6 items-center justify-center min-h-screen p-4">
 			<h1 className="text-3xl font-bold">ArbSwap</h1>
 			<p className="text-center text-muted-foreground mb-4">
 				Swap tokens on Arbitrum using Farcaster
 			</p>
 			{isConnected && (
-				<div className="w-full flex flex-col lg:flex-row gap-6 items-start justify-center">
-					<Tabs defaultValue="search">
-						<TabsList className="w-full">
-							<TabsTrigger value="search">Search</TabsTrigger>
-							<TabsTrigger value="clankers">Clankers</TabsTrigger>
-						</TabsList>
-						<TabsContent value="search">
-							<TokenSwap
-								externalSelectedToken={selectedToken}
-								onTokenSelect={setSelectedToken}
-							/>
-						</TabsContent>
-						<TabsContent value="clankers">
-							<TopClankers onTokenSelect={handleClankerSelect} />
-						</TabsContent>
-					</Tabs>
-				</div>
+				<Tabs defaultValue="search" className="w-full">
+					<TabsList className="w-full">
+						<TabsTrigger value="search">Search</TabsTrigger>
+						<TabsTrigger value="clankers">Clankers</TabsTrigger>
+					</TabsList>
+					<TabsContent value="search">
+						<TokenSwap
+							externalSelectedToken={selectedToken}
+							onTokenSelect={setSelectedToken}
+						/>
+					</TabsContent>
+					<TabsContent value="clankers">
+						<TopClankers onTokenSelect={handleClankerSelect} />
+					</TabsContent>
+				</Tabs>
 			)}
 			{!isConnected && (
 				<Button

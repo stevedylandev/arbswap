@@ -3,15 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	type Token,
-	useSearchTokensQuery,
-	usePopularTokensQuery,
-} from "../services/tokenService";
+import { type Token, useSearchTokensQuery } from "../services/tokenService";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useDebounce } from "use-debounce";
+import { DEFAULT_TOKENS } from "@/lib/constants";
 
-// Memoized component to prevent unnecessary re-renders
 const TokenList = memo(
 	({
 		tokens,
@@ -90,14 +86,6 @@ const TokenListContainer = memo(
 		// Use debounced search query for the API call
 		const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
 
-		// Fetch popular tokens to show when no search query is entered
-		const popularTokensQuery = usePopularTokensQuery();
-		const {
-			data: popularTokens,
-			isLoading: isPopularLoading,
-			isError: isPopularError,
-		} = useQuery(popularTokensQuery);
-
 		// Search tokens based on query
 		const searchTokensQuery = useSearchTokensQuery(debouncedSearchQuery);
 		const {
@@ -107,9 +95,9 @@ const TokenListContainer = memo(
 		} = useQuery(searchTokensQuery);
 
 		// Determine which tokens to display
-		const displayTokens = debouncedSearchQuery ? searchResults : popularTokens;
-		const isLoading = debouncedSearchQuery ? isSearchLoading : isPopularLoading;
-		const isError = debouncedSearchQuery ? isSearchError : isPopularError;
+		const displayTokens = debouncedSearchQuery ? searchResults : DEFAULT_TOKENS;
+		const isLoading = debouncedSearchQuery ? isSearchLoading : false;
+		const isError = debouncedSearchQuery ? isSearchError : false;
 
 		if (isLoading) {
 			return <div className="p-4 text-center">Loading tokens...</div>;
@@ -126,9 +114,7 @@ const TokenListContainer = memo(
 		if (displayTokens?.length === 0) {
 			return (
 				<div className="p-4 text-center text-muted-foreground">
-					{debouncedSearchQuery
-						? "No tokens found. Try a different search term."
-						: "No popular tokens available."}
+					No tokens found. Try a different search term.
 				</div>
 			);
 		}
@@ -213,11 +199,6 @@ export function TokenSwap({
 				<div>
 					<div className="flex justify-between items-center">
 						<Label htmlFor="token-search">Search for a token</Label>
-						{!searchQuery && (
-							<span className="text-xs text-muted-foreground">
-								Showing popular tokens
-							</span>
-						)}
 					</div>
 					<div className="relative mt-1.5">
 						<div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
