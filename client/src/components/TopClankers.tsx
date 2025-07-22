@@ -26,9 +26,7 @@ interface ClankerResponse {
 }
 
 const fetchTopClankers = async (): Promise<ClankerResponse> => {
-	const response = await fetch(
-		`${import.meta.env.VITE_SERVER_URL}/tokens/6023`,
-	);
+	const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/tokens/3`);
 	if (!response.ok) {
 		throw new Error("Failed to fetch clankers");
 	}
@@ -41,10 +39,10 @@ interface TopClankersProps {
 	onConnectionRequired?: () => void;
 }
 
-export function TopClankers({ 
-	onTokenSelect, 
-	isConnected = true, 
-	onConnectionRequired 
+export function TopClankers({
+	onTokenSelect,
+	isConnected = true,
+	onConnectionRequired,
 }: TopClankersProps = {}) {
 	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
