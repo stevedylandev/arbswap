@@ -6,6 +6,7 @@ import type {
 	TokenResponse,
 	ArbSocialTradingRow,
 } from "shared";
+import { validateTradeData, validateFidParam } from "./validation";
 
 // Define your table type based on the schema
 
@@ -23,7 +24,14 @@ app.get("/", (c) => {
 });
 
 app.get("/tokens/:fid", async (c) => {
-	const fid = c.req.param("fid");
+	const fidParam = c.req.param("fid");
+	
+	const fidValidation = validateFidParam(fidParam);
+	if (!fidValidation.success) {
+		return c.json({ error: fidValidation.error }, 400);
+	}
+	
+	const fid = fidValidation.data;
 
 	const followerRes = await fetch(
 		`https://api.quotient.social/v1/farcaster-users/mutuals`,
@@ -33,7 +41,7 @@ app.get("/tokens/:fid", async (c) => {
 				"Content-Type": "application/json",
 			},
 			body: JSON.stringify({
-				fid: Number(fid),
+				fid: fid,
 				api_key: c.env.QUOTIENT_API_KEY,
 			}),
 		},
@@ -84,6 +92,19 @@ app.get("/tokens/:fid", async (c) => {
 app.post("/trade", async (c) => {
 	try {
 		const body = await c.req.json();
+		
+		// Validate the request body using Zod
+		const validation = validateTradeData(body);
+		if (!validation.success) {
+			return c.json(
+				{
+					success: false,
+					error: validation.error,
+				},
+				400,
+			);
+		}
+		
 		const {
 			fid,
 			wallet_address,
@@ -92,19 +113,8 @@ app.post("/trade", async (c) => {
 			amount_in,
 			amount_out,
 			timestamp,
-			chain = 42161, // Default to Arbitrum
-		} = body;
-
-		// Basic validation
-		if (!fid || !wallet_address || !tx_hash || !token_address) {
-			return c.json(
-				{
-					success: false,
-					error: "Missing required fields",
-				},
-				400,
-			);
-		}
+			chain,
+		} = validation.data;
 
 		const sql = neon(c.env.DATABASE_URL);
 

@@ -92,3 +92,31 @@ export const useSearchTokensQuery = (query: string) => {
     enabled: query.length > 0,
   };
 };
+
+export interface TradeData {
+  fid: number;
+  wallet_address: string;
+  tx_hash: string;
+  token_address: string;
+  amount_in: number;
+  amount_out: number;
+  timestamp: string;
+  chain?: number;
+}
+
+export const recordTrade = async (tradeData: TradeData): Promise<{ success: boolean; data?: any; error?: string }> => {
+  try {
+    const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/trade`, tradeData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error recording trade:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      return { success: false, error: error.response.data.error || 'Failed to record trade' };
+    }
+    return { success: false, error: 'Failed to record trade' };
+  }
+};

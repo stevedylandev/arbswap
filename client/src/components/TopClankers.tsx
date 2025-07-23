@@ -3,6 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useState } from "react";
 import { Skeleton } from "./ui/skeleton";
+import { recordTrade, type TradeData } from "../services/tokenService";
+import { toast } from "sonner";
+import { useAccount } from "wagmi";
 
 interface ClankerToken {
 	address: string;
@@ -46,6 +49,7 @@ export function TopClankers({
 }: TopClankersProps = {}) {
 	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const { address } = useAccount();
 
 	const { data, isLoading, isError } = useQuery({
 		queryKey: ["topClankers"],
@@ -75,16 +79,52 @@ export function TopClankers({
 			// Default amount of USDC to swap (1 USDC)
 			const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
 
-			await sdk.actions.swapToken({
+			const result = await sdk.actions.swapToken({
 				sellToken,
 				buyToken,
 				sellAmount,
 			});
 
-			// Call the original onTokenSelect if provided
-			onTokenSelect?.(token);
+			if (result.success) {
+				toast(`Successfully swapped 1 USDC for ${token.name}!`);
+				
+				// Record the trade in the database
+				try {
+					const context = await sdk.context;
+					const user = context.user;
+					
+					if (user && address && result.swap.transactions.length > 0) {
+						const tradeData: TradeData = {
+							fid: user.fid,
+							wallet_address: address,
+							tx_hash: result.swap.transactions[result.swap.transactions.length - 1], // Use the last transaction (swap tx)
+							token_address: token.address,
+							amount_in: 1, // 1 USDC
+							amount_out: 0, // We don't have the exact amount out from the API
+							timestamp: new Date().toISOString(),
+							chain: 42161, // Arbitrum
+						};
+
+						const recordResult = await recordTrade(tradeData);
+						if (!recordResult.success) {
+							console.warn('Failed to record trade:', recordResult.error);
+						}
+					}
+				} catch (recordError) {
+					console.warn('Error recording trade:', recordError);
+				}
+
+				// Call the original onTokenSelect if provided
+				onTokenSelect?.(token);
+			} else {
+				const errorMessage = result.error?.message || `Swap failed: ${result.reason}`;
+				toast(`Swap failed: ${errorMessage}`);
+				setError(errorMessage);
+			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to swap tokens");
+			const errorMessage = err instanceof Error ? err.message : "Failed to swap tokens";
+			toast(`Swap failed: ${errorMessage}`);
+			setError(errorMessage);
 		} finally {
 			setIsSwapping(null);
 		}

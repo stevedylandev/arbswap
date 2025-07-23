@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { type Token, useSearchTokensQuery } from "../services/tokenService";
+import { type Token, useSearchTokensQuery, recordTrade, type TradeData } from "../services/tokenService";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useDebounce } from "use-debounce";
 import { DEFAULT_TOKENS } from "@/lib/constants";
 import { toast } from "sonner";
+import { useAccount } from "wagmi";
 
 const TokenList = memo(
 	({
@@ -150,6 +151,7 @@ export function TokenSwap({
 	);
 	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const { address } = useAccount();
 
 	// USDC on Arbitrum
 	const USDC_ADDRESS = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
@@ -192,6 +194,32 @@ export function TokenSwap({
 					toast(`Successfully swapped 1 USDC for ${token.symbol}!`);
 					setSelectedToken(token);
 					onTokenSelect?.(token);
+
+					// Record the trade in the database
+					try {
+						const context = await sdk.context;
+						const user = context.user;
+						
+						if (user && address && result.swap.transactions.length > 0) {
+							const tradeData: TradeData = {
+								fid: user.fid,
+								wallet_address: address,
+								tx_hash: result.swap.transactions[result.swap.transactions.length - 1], // Use the last transaction (swap tx)
+								token_address: token.address,
+								amount_in: 1, // 1 USDC
+								amount_out: 0, // We don't have the exact amount out from the API
+								timestamp: new Date().toISOString(),
+								chain: 42161, // Arbitrum
+							};
+
+							const recordResult = await recordTrade(tradeData);
+							if (!recordResult.success) {
+								console.warn('Failed to record trade:', recordResult.error);
+							}
+						}
+					} catch (recordError) {
+						console.warn('Error recording trade:', recordError);
+					}
 				} else {
 					const errorMessage = result.error?.message || `Swap failed: ${result.reason}`;
 					toast(`Swap failed: ${errorMessage}`);
