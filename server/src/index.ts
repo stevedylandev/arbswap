@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 import type {
 	FollowerResponse,
 	TokenResponse,
@@ -116,7 +116,21 @@ app.post("/trade", async (c) => {
 			chain,
 		} = validation.data;
 
-		const sql = neon(c.env.DATABASE_URL);
+		if (!c.env.DATABASE_URL) {
+			console.error("DATABASE_URL environment variable is not set");
+			return c.json(
+				{
+					success: false,
+					error: "Database configuration missing",
+				},
+				500,
+			);
+		}
+		
+		console.log("DATABASE_URL exists:", !!c.env.DATABASE_URL);
+		console.log("DATABASE_URL starts with:", c.env.DATABASE_URL?.substring(0, 20));
+		
+		const sql = postgres(c.env.DATABASE_URL);
 
 		const result = await sql`
         INSERT INTO ecosystem.arb_social_trading (
@@ -135,10 +149,17 @@ app.post("/trade", async (c) => {
 		});
 	} catch (error) {
 		console.error("Database error:", error);
+		console.error("Error details:", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			name: error instanceof Error ? error.name : undefined,
+		});
+		
 		return c.json(
 			{
 				success: false,
-				error: "Failed to create trade record",
+				error: error instanceof Error ? error.message : "Failed to create trade record",
+				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
 		);
