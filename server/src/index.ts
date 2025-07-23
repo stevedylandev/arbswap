@@ -1,11 +1,22 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { ApiResponse } from "shared/dist";
+import { neon } from "@neondatabase/serverless";
+
+// Define your table type based on the schema
+interface ArbSocialTradingRow {
+	fid: number;
+	wallet_address: string;
+	tx_hash: string;
+	token_address: string;
+	amount_in: number;
+	amount_out: number;
+	timestamp: string;
+	chain: number;
+}
 
 type Bindings = {
-	NEYNAR_API_KEY: string;
-	ALCHEMY_API_KEY: string;
 	QUOTIENT_API_KEY: string;
+	DATABASE_URL: string;
 };
 
 type Holder = {
@@ -108,6 +119,60 @@ app.get("/tokens/:fid", async (c) => {
 	const tokens = (await tokenRes.json()) as TokenResponse;
 
 	return c.json(tokens);
+});
+
+app.post("/trade", async (c) => {
+	try {
+		const body = await c.req.json();
+		const {
+			fid,
+			wallet_address,
+			tx_hash,
+			token_address,
+			amount_in,
+			amount_out,
+			timestamp,
+			chain = 42161, // Default to Arbitrum
+		} = body;
+
+		// Basic validation
+		if (!fid || !wallet_address || !tx_hash || !token_address) {
+			return c.json(
+				{
+					success: false,
+					error: "Missing required fields",
+				},
+				400,
+			);
+		}
+
+		const sql = neon(c.env.DATABASE_URL);
+
+		const result = await sql`
+        INSERT INTO ecosystem.arb_social_trading (
+          fid, wallet_address, tx_hash, token_address,
+          amount_in, amount_out, timestamp, chain
+        ) VALUES (
+          ${fid}, ${wallet_address}, ${tx_hash}, ${token_address},
+          ${amount_in}, ${amount_out}, ${timestamp}, ${chain}
+        )
+        RETURNING *
+      `;
+
+		return c.json({
+			success: true,
+			data: result[0] as ArbSocialTradingRow,
+		});
+	} catch (error) {
+		console.error("Database error:", error);
+		return c.json(
+			{
+				success: false,
+				error: "Failed to create trade record",
+			},
+			500,
+		);
+	}
 });
 
 export default {
