@@ -1,57 +1,17 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { neon } from "@neondatabase/serverless";
+import type {
+	FollowerResponse,
+	TokenResponse,
+	ArbSocialTradingRow,
+} from "shared";
 
 // Define your table type based on the schema
-interface ArbSocialTradingRow {
-	fid: number;
-	wallet_address: string;
-	tx_hash: string;
-	token_address: string;
-	amount_in: number;
-	amount_out: number;
-	timestamp: string;
-	chain: number;
-}
 
 type Bindings = {
 	QUOTIENT_API_KEY: string;
 	DATABASE_URL: string;
-};
-
-type Holder = {
-	fid: number;
-	username: string;
-	pfpUrl: string;
-	quotientScore: number;
-};
-
-type Token = {
-	address: string;
-	name: string;
-	description: string;
-	imageUrl: string;
-	count_holders: number;
-	holders: Holder[];
-};
-
-type TokenResponse = {
-	tokens: Token[];
-	total_tokens: number;
-	queried_fids: number;
-	chain: string;
-};
-
-type Follower = {
-	fid: number;
-	username: string;
-	pfp_url: string;
-};
-
-type FollowerResponse = {
-	fid: number;
-	mutual_followers: Follower[];
-	count: number;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
