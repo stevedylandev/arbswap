@@ -8,7 +8,8 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { useDebounce } from "use-debounce";
 import { DEFAULT_TOKENS } from "@/lib/constants";
 import { toast } from "sonner";
-import { useAccount } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { parseSwapAmountsFromReceipt, formatTokenAmount } from "../utils/transactionUtils";
 
 const TokenList = memo(
 	({
@@ -151,11 +152,20 @@ export function TokenSwap({
 	);
 	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | undefined>(undefined);
 	const { address } = useAccount();
 
 	// USDC on Arbitrum
 	const USDC_ADDRESS = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 	const USDC_DECIMALS = 6;
+
+	// Wait for transaction receipt to get actual swap amounts
+	const { data: receipt } = useWaitForTransactionReceipt({
+		hash: pendingTxHash,
+		query: {
+			enabled: !!pendingTxHash,
+		},
+	});
 
 	// Handle external token selection
 	useEffect(() => {
@@ -163,6 +173,56 @@ export function TokenSwap({
 			setSelectedToken(externalSelectedToken);
 		}
 	}, [externalSelectedToken]);
+
+	// Handle transaction receipt and record trade with actual amounts
+	useEffect(() => {
+		if (receipt && address && selectedToken) {
+			const recordTradeWithActualAmounts = async () => {
+				try {
+					const context = await sdk.context;
+					const user = context.user;
+
+					if (!user) return;
+
+					const swapAmounts = parseSwapAmountsFromReceipt(
+						receipt,
+						address,
+						USDC_ADDRESS,
+						selectedToken.address,
+						USDC_DECIMALS,
+						selectedToken.decimals || 18
+					);
+
+					if (swapAmounts) {
+						const tradeData: TradeData = {
+							fid: user.fid,
+							wallet_address: address,
+							tx_hash: receipt.transactionHash,
+							token_address: selectedToken.address,
+							amount_in: formatTokenAmount(swapAmounts.amountIn, USDC_DECIMALS),
+							amount_out: formatTokenAmount(swapAmounts.amountOut, selectedToken.decimals || 18),
+							timestamp: new Date().toISOString(),
+							chain: 42161, // Arbitrum
+						};
+
+						const recordResult = await recordTrade(tradeData);
+						if (!recordResult.success) {
+							console.warn('Failed to record trade:', recordResult.error);
+						} else {
+							console.log('Trade recorded successfully with actual amounts:', tradeData);
+						}
+					}
+				} catch (error) {
+					console.warn('Error recording trade with actual amounts:', error);
+				} finally {
+					// Clear pending transaction
+					setPendingTxHash(undefined);
+				}
+			};
+
+			recordTradeWithActualAmounts();
+		}
+	}, [receipt, address, selectedToken, USDC_ADDRESS, USDC_DECIMALS]);
 
 	// Memoize the token selection handler to prevent unnecessary re-renders
 	const handleSelectToken = useCallback(
@@ -195,30 +255,10 @@ export function TokenSwap({
 					setSelectedToken(token);
 					onTokenSelect?.(token);
 
-					// Record the trade in the database
-					try {
-						const context = await sdk.context;
-						const user = context.user;
-						
-						if (user && address && result.swap.transactions.length > 0) {
-							const tradeData: TradeData = {
-								fid: user.fid,
-								wallet_address: address,
-								tx_hash: result.swap.transactions[result.swap.transactions.length - 1], // Use the last transaction (swap tx)
-								token_address: token.address,
-								amount_in: 1, // 1 USDC
-								amount_out: 0, // We don't have the exact amount out from the API
-								timestamp: new Date().toISOString(),
-								chain: 42161, // Arbitrum
-							};
-
-							const recordResult = await recordTrade(tradeData);
-							if (!recordResult.success) {
-								console.warn('Failed to record trade:', recordResult.error);
-							}
-						}
-					} catch (recordError) {
-						console.warn('Error recording trade:', recordError);
+					// Set pending transaction hash to wait for receipt
+					const txHash = result.swap.transactions[result.swap.transactions.length - 1];
+					if (txHash) {
+						setPendingTxHash(txHash as `0x${string}`);
 					}
 				} else {
 					const errorMessage = result.error?.message || `Swap failed: ${result.reason}`;
