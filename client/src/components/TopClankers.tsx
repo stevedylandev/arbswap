@@ -95,28 +95,27 @@ export function TopClankers({
 						18, // Assuming 18 decimals for clanker tokens
 					);
 
-					if (swapAmounts) {
-						const tradeData: TradeData = {
-							fid: user.fid,
-							wallet_address: address,
-							tx_hash: transaction.hash,
-							token_address_out: pendingSwap.token.address,
-							token_address_in: USDC_ADDRESS,
-							amount_in: formatTokenAmount(swapAmounts.amountIn, USDC_DECIMALS),
-							amount_out: formatTokenAmount(swapAmounts.amountOut, 18),
-							timestamp: new Date().toISOString(),
-							chain: transaction.chainId,
-						};
+					// Always record trade, even if parsing fails
+					const tradeData: TradeData = {
+						fid: user.fid,
+						wallet_address: address,
+						tx_hash: transaction.hash,
+						token_address_out: pendingSwap.token.address,
+						token_address_in: USDC_ADDRESS,
+						amount_in: swapAmounts ? formatTokenAmount(swapAmounts.amountIn, USDC_DECIMALS) : 1, // Fallback to 1 USDC
+						amount_out: swapAmounts ? formatTokenAmount(swapAmounts.amountOut, 18) : 0, // Fallback to 0 if unknown
+						timestamp: new Date().toISOString(),
+						chain: transaction.chainId,
+					};
 
-						const recordResult = await recordTrade(tradeData);
-						if (!recordResult.success) {
-							console.warn("Failed to record trade:", recordResult.error);
-						} else {
-							console.log(
-								"Trade recorded successfully with actual amounts:",
-								tradeData,
-							);
-						}
+					const recordResult = await recordTrade(tradeData);
+					if (!recordResult.success) {
+						console.warn("Failed to record trade:", recordResult.error);
+					} else {
+						console.log(
+							swapAmounts ? "Trade recorded successfully with actual amounts:" : "Trade recorded with fallback amounts:",
+							tradeData,
+						);
 					}
 				} catch (error) {
 					console.warn("Error recording trade with actual amounts:", error);
