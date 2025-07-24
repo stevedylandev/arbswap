@@ -269,7 +269,7 @@ export function TokenSwap({
 				});
 
 				if (result.success) {
-					toast(`Successfully swapped 1 USDC for ${token.symbol}!`);
+					toast(`Swap Successful!`);
 					setSelectedToken(token);
 					onTokenSelect?.(token);
 
