@@ -97,7 +97,8 @@ export interface TradeData {
   fid: number;
   wallet_address: string;
   tx_hash: string;
-  token_address: string;
+  token_address_out: string;
+  token_address_in: string;
   amount_in: number;
   amount_out: number;
   timestamp: string;
