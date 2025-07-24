@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useState, useEffect } from "react";
 import { Skeleton } from "./ui/skeleton";
@@ -34,12 +34,25 @@ interface ClankerResponse {
 	total_tokens: number;
 	queried_fids: number;
 	chain: string;
+	fallback_used?: boolean;
 }
 
 const fetchTopClankers = async (): Promise<ClankerResponse> => {
-	const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/tokens/3`);
+	let fid: number = 3;
+	const context = await sdk.context;
+	if (context) {
+		fid = context.user.fid;
+	}
+	const response = await fetch(
+		`${import.meta.env.VITE_SERVER_URL}/tokens/${fid}`,
+	);
 	if (!response.ok) {
-		throw new Error("Failed to fetch clankers");
+		const retryRes = await fetch(`${import.meta.env.VITE_SERVER_URL}/tokens/3`);
+		if (!retryRes.ok) {
+			throw new Error("Failed to fetch clankers");
+		}
+		const fallbackData = await retryRes.json();
+		return { ...fallbackData, fallback_used: true };
 	}
 	return response.json();
 };
@@ -240,10 +253,22 @@ export function TopClankers({
 	return (
 		<div className="w-full max-w-md mx-auto p-6 bg-background border rounded-lg shadow-sm">
 			<h2 className="text-2xl font-bold">Top Clankers on Arbitrum</h2>
-			<p className="text-sm text-muted-foreground mb-6">
-				The current top Clankers based on your mutual follows on Farcaster.
-				Click any token to swap for it!
-			</p>
+			{data?.fallback_used ? (
+				<div className="mb-6 mt-3 p-3 bg-gray-100 rounded-lg border border-gray-200">
+					<div className="flex items-start gap-2">
+						<Info className="h-4 w-4 text-gray-600 flex-shrink-0 mt-0.5" />
+						<p className="text-sm text-gray-700">
+							No mutuals found, but here are the top 3 Clankers! Click any token
+							to swap for it!
+						</p>
+					</div>
+				</div>
+			) : (
+				<p className="text-sm text-muted-foreground mb-6">
+					The current top Clankers based on your mutual follows on Farcaster.
+					Click any token to swap for it!
+				</p>
+			)}
 
 			{error && (
 				<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
