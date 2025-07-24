@@ -48,7 +48,7 @@ const TokenList = memo(
 								: ""
 						}`}
 						onClick={() => onSelectToken(token)}
-						title="Click to swap 1 USDC for this token"
+						title="Click to swap 0.001 ETH for this token"
 					>
 						{token.icon_url ? (
 							<img
@@ -170,9 +170,9 @@ export function TokenSwap({
 	} | null>(null);
 	const { address } = useAccount();
 
-	// USDC on Arbitrum
-	const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-	const USDC_DECIMALS = 6;
+	// ETH on Base (native token)
+	const ETH_ADDRESS = "0x0000000000000000000000000000000000000000";
+	const ETH_DECIMALS = 18;
 
 	// Handle external token selection
 	useEffect(() => {
@@ -197,9 +197,9 @@ export function TokenSwap({
 						transaction.receipt,
 						transaction.chainId,
 						address,
-						USDC_ADDRESS,
+						ETH_ADDRESS,
 						pendingSwap.token.address,
-						USDC_DECIMALS,
+						ETH_DECIMALS,
 						pendingSwap.token.decimals || 18,
 					);
 
@@ -209,12 +209,16 @@ export function TokenSwap({
 						wallet_address: address,
 						tx_hash: transaction.hash,
 						token_address_out: pendingSwap.token.address,
-						token_address_in: USDC_ADDRESS,
-						amount_in: swapAmounts ? formatTokenAmount(swapAmounts.amountIn, USDC_DECIMALS) : 1, // Fallback to 1 USDC
-						amount_out: swapAmounts ? formatTokenAmount(
-							swapAmounts.amountOut,
-							pendingSwap.token.decimals || 18,
-						) : 0, // Fallback to 0 if unknown
+						token_address_in: ETH_ADDRESS,
+						amount_in: swapAmounts
+							? formatTokenAmount(swapAmounts.amountIn, ETH_DECIMALS)
+							: 0.001, // Fallback to 0.001 ETH
+						amount_out: swapAmounts
+							? formatTokenAmount(
+									swapAmounts.amountOut,
+									pendingSwap.token.decimals || 18,
+								)
+							: 0, // Fallback to 0 if unknown
 						timestamp: new Date().toISOString(),
 						chain: transaction.chainId,
 					};
@@ -224,7 +228,9 @@ export function TokenSwap({
 						console.warn("Failed to record trade:", recordResult.error);
 					} else {
 						console.log(
-							swapAmounts ? "Trade recorded successfully with actual amounts:" : "Trade recorded with fallback amounts:",
+							swapAmounts
+								? "Trade recorded successfully with actual amounts:"
+								: "Trade recorded with fallback amounts:",
 							tradeData,
 						);
 					}
@@ -239,7 +245,7 @@ export function TokenSwap({
 			// Try to get transaction receipt (Base first, then Arbitrum)
 			getTransactionReceipt(pendingSwap.txHash, recordTradeWithActualAmounts);
 		}
-	}, [pendingSwap, address, USDC_ADDRESS, USDC_DECIMALS]);
+	}, [pendingSwap, address, ETH_ADDRESS, ETH_DECIMALS]);
 
 	// Memoize the token selection handler to prevent unnecessary re-renders
 	const handleSelectToken = useCallback(
@@ -255,11 +261,11 @@ export function TokenSwap({
 
 			try {
 				// Convert token addresses to CAIP-19 format
-				const sellToken = `eip155:8453/erc20:${USDC_ADDRESS}`;
+				const sellToken = `eip155:8453/native`; // Native ETH on Base
 				const buyToken = `eip155:42161/erc20:${token.address}`;
 
-				// Default amount of USDC to swap (1 USDC)
-				const sellAmount = (1 * Math.pow(10, USDC_DECIMALS)).toString();
+				// Default amount of ETH to swap (0.001 ETH)
+				const sellAmount = (0.001 * Math.pow(10, ETH_DECIMALS)).toString();
 
 				const result = await sdk.actions.swapToken({
 					sellToken,
@@ -298,8 +304,8 @@ export function TokenSwap({
 			isConnected,
 			onConnectionRequired,
 			onTokenSelect,
-			USDC_ADDRESS,
-			USDC_DECIMALS,
+			ETH_ADDRESS,
+			ETH_DECIMALS,
 		],
 	);
 
