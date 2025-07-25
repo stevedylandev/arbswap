@@ -1,19 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Info } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Skeleton } from "./ui/skeleton";
 import { recordTrade, type TradeData } from "../services/tokenService";
 import { toast } from "sonner";
-import { useAccount } from "wagmi";
-import {
-	parseSwapAmountsFromCrossChainReceipt,
-	formatTokenAmount,
-} from "../utils/transactionUtils";
-import {
-	getTransactionReceipt,
-	type TransactionWithChain,
-} from "../utils/crossChainUtils";
 
 interface ClankerToken {
 	address: string;
@@ -70,84 +61,12 @@ export function TopClankers({
 }: TopClankersProps = {}) {
 	const [isSwapping, setIsSwapping] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [pendingSwap, setPendingSwap] = useState<{
-		token: ClankerToken;
-		txHash: string;
-	} | null>(null);
-	const { address } = useAccount();
 
 	const { data, isLoading, isError } = useQuery({
 		queryKey: ["topClankers"],
 		queryFn: fetchTopClankers,
 		refetchInterval: 30000,
 	});
-
-	// ETH on Base (native token)
-	const ETH_ADDRESS = "0x0000000000000000000000000000000000000000";
-	const ETH_DECIMALS = 18;
-
-	// Handle transaction monitoring (try Base first, then Arbitrum)
-	useEffect(() => {
-		if (pendingSwap && address) {
-			const recordTradeWithActualAmounts = async (
-				transaction: TransactionWithChain,
-			) => {
-				try {
-					const context = await sdk.context;
-					const user = context.user;
-
-					if (!user) return;
-
-					const swapAmounts = await parseSwapAmountsFromCrossChainReceipt(
-						transaction.receipt,
-						transaction.chainId,
-						address,
-						ETH_ADDRESS,
-						pendingSwap.token.address,
-						ETH_DECIMALS,
-						18, // Assuming 18 decimals for clanker tokens
-					);
-
-					// Always record trade, even if parsing fails
-					const tradeData: TradeData = {
-						fid: user.fid,
-						wallet_address: address,
-						tx_hash: transaction.hash,
-						token_address_out: pendingSwap.token.address,
-						token_address_in: ETH_ADDRESS,
-						amount_in: swapAmounts
-							? formatTokenAmount(swapAmounts.amountIn, ETH_DECIMALS)
-							: 0.001, // Fallback to 0.001 ETH
-						amount_out: swapAmounts
-							? formatTokenAmount(swapAmounts.amountOut, 18)
-							: 0, // Fallback to 0 if unknown
-						timestamp: new Date().toISOString(),
-						chain: transaction.chainId,
-					};
-
-					const recordResult = await recordTrade(tradeData);
-					if (!recordResult.success) {
-						console.warn("Failed to record trade:", recordResult.error);
-					} else {
-						console.log(
-							swapAmounts
-								? "Trade recorded successfully with actual amounts:"
-								: "Trade recorded with fallback amounts:",
-							tradeData,
-						);
-					}
-				} catch (error) {
-					console.warn("Error recording trade with actual amounts:", error);
-				} finally {
-					// Clear pending swap after processing
-					setPendingSwap(null);
-				}
-			};
-
-			// Try to get transaction receipt (Base first, then Arbitrum)
-			getTransactionReceipt(pendingSwap.txHash, recordTradeWithActualAmounts);
-		}
-	}, [pendingSwap, address, ETH_ADDRESS, ETH_DECIMALS]);
 
 	const handleTokenClick = async (token: ClankerToken) => {
 		// Check if wallet is connected before attempting swap
@@ -165,7 +84,7 @@ export function TopClankers({
 			const buyToken = `eip155:42161/erc20:${token.address}`;
 
 			// Default amount of ETH to swap (0.001 ETH)
-			const sellAmount = (0.001 * Math.pow(10, ETH_DECIMALS)).toString();
+			const sellAmount = (0.001 * Math.pow(10, 18)).toString();
 
 			const result = await sdk.actions.swapToken({
 				sellToken,
@@ -176,12 +95,27 @@ export function TopClankers({
 			if (result.success) {
 				toast(`Swap successful!`);
 
-				// Monitor the single transaction (try Base first, then Arbitrum)
+				// Record trade with just fid and tx_hash
 				if (result.swap.transactions && result.swap.transactions.length > 0) {
-					setPendingSwap({
-						token,
-						txHash: result.swap.transactions[0], // Always just one transaction
-					});
+					try {
+						const context = await sdk.context;
+						const user = context.user;
+
+						if (user) {
+							const tradeData: TradeData = {
+								fid: user.fid,
+								tx_hash: result.swap.transactions[0],
+								timestamp: new Date().toISOString(),
+							};
+
+							const recordResult = await recordTrade(tradeData);
+							if (!recordResult.success) {
+								console.warn("Failed to record trade:", recordResult.error);
+							}
+						}
+					} catch (recordError) {
+						console.warn("Error recording trade:", recordError);
+					}
 				}
 
 				// Call the original onTokenSelect if provided

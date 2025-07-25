@@ -95,14 +95,8 @@ export const useSearchTokensQuery = (query: string) => {
 
 export interface TradeData {
   fid: number;
-  wallet_address: string;
   tx_hash: string;
-  token_address_out: string;
-  token_address_in: string;
-  amount_in: number;
-  amount_out: number;
   timestamp: string;
-  chain?: number;
 }
 
 export const recordTrade = async (tradeData: TradeData): Promise<{ success: boolean; data?: any; error?: string }> => {

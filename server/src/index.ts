@@ -105,17 +105,7 @@ app.post("/trade", async (c) => {
       );
     }
 
-    const {
-      fid,
-      wallet_address,
-      tx_hash,
-      token_address_in,
-      token_address_out,
-      amount_in,
-      amount_out,
-      timestamp,
-      chain,
-    } = validation.data;
+    const { fid, tx_hash, timestamp } = validation.data;
 
     if (!c.env.DATABASE_URL) {
       console.error("DATABASE_URL environment variable is not set");
@@ -135,11 +125,9 @@ app.post("/trade", async (c) => {
 
     const result = await sql`
         INSERT INTO ecosystem.arb_social_trading (
-          fid, wallet_address, tx_hash, token_address_in, token_address_out,
-          amount_in, amount_out, timestamp, chain
+          fid, tx_hash, timestamp
         ) VALUES (
-          ${fid}, ${wallet_address}, ${tx_hash}, ${token_address_in}, ${token_address_out},
-          ${amount_in}, ${amount_out}, ${timestamp}, ${chain}
+          ${fid}, ${tx_hash}, ${timestamp}
         )
         RETURNING *
       `;
