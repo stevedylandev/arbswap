@@ -84,7 +84,7 @@ export function TopClankers({
 			const buyToken = `eip155:42161/erc20:${token.address}`;
 
 			// Default amount of ETH to swap (0.001 ETH)
-			const sellAmount = (0.001 * Math.pow(10, 18)).toString();
+			const sellAmount = (0.00265 * Math.pow(10, 18)).toString();
 
 			const result = await sdk.actions.swapToken({
 				sellToken,
